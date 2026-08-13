@@ -5,7 +5,7 @@
 (() => {
   const config=window.SCENERY_SUPABASE_CONFIG||{};
   const hasConfig=Boolean(config.url&&config.anonKey&&window.supabase?.createClient);
-  const client=hasConfig?window.supabase.createClient(config.url,config.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
+  const client=hasConfig?window.supabase.createClient(config.url,config.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
   const localHistoryKey='scenery-invoice-history',localBookingsKey='scenery-closed-bookings',localRoundsKey='scenery-closed-rounds',localEditsKey='scenery-close-round-detail-edits',localAuditKey='scenery-audit-log',loginEmailKey='scenery-last-login-email';
   const originals={saveInvoiceHistory:window.saveInvoiceHistory,saveClosedBookings:window.saveClosedBookings,deleteInvoiceHistory:window.deleteInvoiceHistory,submitCloseRound:window.submitCloseRound,saveCloseRoundDetailEdit:window.saveCloseRoundDetailEdit};
   window.scenerySupabase={enabled:hasConfig,client,mode:hasConfig?'supabase':'local'};
