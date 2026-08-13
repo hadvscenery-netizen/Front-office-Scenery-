@@ -1,4 +1,7 @@
-const CACHE_NAME='scenery-cashier-pwa-v3';
+Exit code: 0
+Wall time: 1.9 seconds
+Output:
+const CACHE_NAME='scenery-cashier-pwa-v4';
 const APP_SHELL=[
   './',
   './index.html',
@@ -7,7 +10,7 @@ const APP_SHELL=[
   './app.js?v=20260812-master-data-live-1',
   './invoice-source-loader.js?v=20260801-invoice-source-1',
   './supabase-config.js?v=20260801-1',
-  './supabase-bridge.js?v=20260812-villa-grid-3',
+  './supabase-bridge.js?v=20260813-auth-persist-1',
   './production-cleanup.js?v=20260801-auth-session-2',
   './manifest.webmanifest',
   './login-logo.png',
@@ -28,3 +31,4 @@ self.addEventListener('fetch',event=>{
     return response;
   }).catch(()=>caches.match(request).then(cached=>cached||caches.match('./index.html'))));
 });
+
