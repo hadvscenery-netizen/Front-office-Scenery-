@@ -1,4 +1,4 @@
-const CACHE_NAME='scenery-cashier-pwa-v4';
+const CACHE_NAME='scenery-cashier-pwa-v5';
 const APP_SHELL=[
   './',
   './index.html',
@@ -7,7 +7,7 @@ const APP_SHELL=[
   './app.js?v=20260812-master-data-live-1',
   './invoice-source-loader.js?v=20260801-invoice-source-1',
   './supabase-config.js?v=20260801-1',
-  './supabase-bridge.js?v=20260813-auth-persist-1',
+  './supabase-bridge.js?v=20260813-auth-flow-2',
   './production-cleanup.js?v=20260801-auth-session-2',
   './manifest.webmanifest',
   './login-logo.png',
