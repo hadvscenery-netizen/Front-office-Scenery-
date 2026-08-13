@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1.9 seconds
-Output:
 /* Supabase bridge for the current static app.
  * The UI remains usable in local mode, while configured deployments persist
  * finalized invoices, closed bookings, close rounds and edits in Supabase.
