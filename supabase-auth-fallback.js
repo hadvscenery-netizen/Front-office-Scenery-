@@ -6,7 +6,21 @@
 
   const notify = (message, type = 'info') => {
     if (typeof window.showToast === 'function') window.showToast(message, type);
-    else window.alert(message);
+    else {
+      let notice = document.querySelector('#auth-fallback-notice');
+      if (!notice) {
+        notice = document.createElement('div');
+        notice.id = 'auth-fallback-notice';
+        notice.setAttribute('role', 'alert');
+        notice.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:9999;max-width:min(92vw,520px);padding:13px 18px;border-radius:12px;background:#fff1f0;color:#9b2c2c;border:1px solid #e8a4a0;box-shadow:0 10px 28px rgba(68,43,24,.18);font:600 15px/1.5 system-ui,sans-serif;text-align:center;';
+        document.body.appendChild(notice);
+      }
+      notice.textContent = message;
+      notice.style.background = type === 'error' ? '#fff1f0' : '#f1f8ef';
+      notice.style.color = type === 'error' ? '#9b2c2c' : '#356b43';
+      clearTimeout(notice._timer);
+      notice._timer = setTimeout(() => notice.remove(), 6000);
+    }
   };
   const messageFor = (body, status) => {
     const raw = String(body?.error_description || body?.msg || body?.message || body?.error || '').toLowerCase();
