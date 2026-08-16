@@ -17,7 +17,7 @@
     '#view-invoice .preview-title h1{font-size:30px;margin-bottom:10px}',
     '#view-invoice .preview-meta{gap:8px 12px}',
     '#view-invoice .preview-table-wrap{overflow-x:auto}',
-    'img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]{clip-path:inset(2px 0 0 0)}',
+    'img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]{clip-path:inset(4px 0 0 0)}',
     '#view-close-round .close-round-detail-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}',
     '#view-close-round .close-round-detail-table{min-width:1800px;font-size:12px}',
     '#view-close-round .close-round-detail-table th,#view-close-round .close-round-detail-table td{padding:5px 6px}',
