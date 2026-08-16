@@ -56,19 +56,47 @@
       return '<tr><td>' + escapeHtml(line.category) + '</td><td class="align-center">' + Number(line.qty || 0) + '</td><td>' + escapeHtml(line.name) + '</td><td class="align-right">' + money(gross) + '</td><td>' + (line.deposit ? money(line.deposit) : '-') + '</td><td class="align-right">' + (discount ? money(discount) : '-') + '</td><td class="align-right">' + money(Math.max(0, gross - discount)) + '</td></tr>';
     }).join('');
   };
+  const updateFallbackTotals = () => {
+    const state = window.sceneryAppState;
+    const invoiceLines = Array.isArray(state?.invoiceLines) ? state.invoiceLines : [];
+    const money = value => `฿${Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const grossTotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.qty || 0) * Number(line.rate || 0)), 0);
+    const depositTotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.deposit || 0)), 0);
+    const discountTotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.discountAmount || 0)), 0);
+    const set = (selector, value) => { const element = document.querySelector(selector); if (element) element.textContent = money(value); };
+    set('#summary-total', grossTotal);
+    set('#summary-deposit', depositTotal);
+    set('#summary-discount', discountTotal);
+    set('#summary-outstanding', Math.max(0, grossTotal - discountTotal - depositTotal));
+    invoiceLines.forEach((line, index) => {
+      const row = document.querySelector('tr[data-fallback-line-index="' + index + '"]');
+      if (!row) return;
+      const total = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0) - Number(line.discountAmount || 0));
+      const totalCell = row.querySelector('td:nth-child(7)');
+      if (totalCell) totalCell.textContent = money(total);
+    });
+  };
   const installFallbackLineControls = () => {
     if (window.__SCENERY_FALLBACK_LINE_CONTROLS) return;
     window.__SCENERY_FALLBACK_LINE_CONTROLS = true;
-    document.addEventListener('change', event => {
-      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount');
-      if (!input) return;
+    const updateLineFromInput = input => {
       const state = window.sceneryAppState;
       const index = Number(input.dataset.fallbackLineIndex);
       const line = state?.invoiceLines?.[index];
-      if (!line) return;
+      if (!line) return false;
       if (input.classList.contains('fallback-line-rate')) line.rate = Math.max(0, numberFrom(input.value));
       if (input.classList.contains('fallback-line-deposit')) line.deposit = Math.max(0, numberFrom(input.value));
       if (input.classList.contains('fallback-line-discount')) line.discountAmount = Math.max(0, numberFrom(input.value));
+      return true;
+    };
+    document.addEventListener('input', event => {
+      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount');
+      if (!input || !updateLineFromInput(input)) return;
+      updateFallbackTotals();
+    });
+    document.addEventListener('change', event => {
+      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount');
+      if (!input || !updateLineFromInput(input)) return;
       renderFallbackLines();
     });
     document.addEventListener('click', event => {
