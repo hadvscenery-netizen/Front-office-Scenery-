@@ -13,6 +13,28 @@
     region.classList.add('is-visible');
     window.setTimeout(() => region.classList.remove('is-visible'), 2600);
   };
+  const renderFallbackLines = () => {
+    const state = window.sceneryAppState;
+    const invoiceLines = Array.isArray(state?.invoiceLines) ? state.invoiceLines : [];
+    const money = value => `฿${Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const row = (line, index) => {
+      const total = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0));
+      return `<tr data-fallback-line-index="${index}"><td>${escapeHtml(line.category)}</td><td>${escapeHtml(line.name)}</td><td class="align-center">${Number(line.qty || 0)}</td><td class="align-right">${money(line.rate)}</td><td class="align-right">${line.deposit ? money(line.deposit) : '-'}</td><td class="align-right">-</td><td class="align-right strong-number">${money(total)}</td><td></td></tr>`;
+    };
+    [['accommodation', '#form-accommodation-lines', '#accommodation-empty'], ['addon', '#form-addon-lines', '#addon-empty']].forEach(([type, bodySelector, emptySelector]) => {
+      const body = document.querySelector(bodySelector);
+      if (!body) return;
+      const matches = invoiceLines.map((line, index) => ({ line, index })).filter(item => item.line.type === type);
+      body.innerHTML = matches.map(item => row(item.line, item.index)).join('');
+      const empty = document.querySelector(emptySelector);
+      if (empty) empty.style.display = matches.length ? 'none' : 'block';
+    });
+    const subtotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.qty || 0) * Number(line.rate || 0)), 0);
+    const summary = document.querySelector('#summary-total');
+    if (summary) summary.textContent = money(subtotal);
+    const preview = document.querySelector('#preview-invoice-lines');
+    if (preview) preview.innerHTML = invoiceLines.map(line => `<tr><td>${escapeHtml(line.category)}</td><td class="align-center">${Number(line.qty || 0)}</td><td>${escapeHtml(line.name)}</td><td class="align-right">${money(Number(line.qty || 0) * Number(line.rate || 0))}</td><td>${line.deposit ? money(line.deposit) : '-'}</td><td>-</td><td class="align-right">${money(Number(line.qty || 0) * Number(line.rate || 0))}</td></tr>`).join('');
+  };
 
   function parseItem(line) {
     let name = clean(line);
@@ -167,6 +189,7 @@
         refreshItems();
         if (typeof renderFormLines === 'function') renderFormLines();
         if (typeof calculateInvoice === 'function') calculateInvoice();
+        renderFallbackLines();
         notify(`เพิ่ม ${item.name} ลงในใบแจ้งหนี้แล้ว`);
       });
       refreshItems();
