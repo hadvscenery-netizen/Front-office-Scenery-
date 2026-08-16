@@ -13,6 +13,7 @@
     '#view-invoice .preview-header{min-height:112px;gap:20px}',
     '#view-invoice .preview-company{gap:11px;padding-top:4px;font-size:10px}',
     '#view-invoice .preview-company img{width:78px;height:78px}',
+    'img[src*="login-logo.png"]{display:block!important;object-fit:contain!important;object-position:center!important;clip-path:none!important;mix-blend-mode:normal!important;background:transparent!important;border:0!important;overflow:visible!important}',
     '#view-invoice .preview-title{min-width:220px}',
     '#view-invoice .preview-title h1{font-size:30px;margin-bottom:10px}',
     '#view-invoice .preview-meta{gap:8px 12px}',
@@ -48,7 +49,7 @@
           image.src = original;
           image.style.clipPath = 'inset(4px 0 0 0)';
         }, { once: true });
-        image.src = './login-logo.png?v=20260816-clean-logo-3';
+        image.src = './login-logo.png?v=20260816-clean-logo-4';
       });
   }
 
