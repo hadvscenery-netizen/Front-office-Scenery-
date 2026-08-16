@@ -38,7 +38,7 @@
     const name = document.querySelector('.profile-text strong');
     const role = document.querySelector('.profile-text small');
     const avatar = document.querySelector('.profile-button .avatar');
-    if (name) name.textContent = label;
+    if (name) name.textContent = email || 'ผู้ใช้งาน';
     if (role) role.textContent = email ? 'SUPABASE USER' : 'ยังไม่ได้เข้าสู่ระบบ';
     if (avatar) avatar.textContent = email ? label.slice(0, 2).toUpperCase() : 'U';
   }
