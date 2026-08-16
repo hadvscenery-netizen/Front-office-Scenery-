@@ -84,7 +84,8 @@
   function applyForm(data) {
     const villa = document.querySelector('#villa');
     if (villa) {
-      const names = data.accommodation.flatMap(group => group.items.map(item => item.name.replace(/\s+Villa$/i, '').trim()));
+      const villaGroups = data.accommodation.filter(group => !/^(Extra_Bed|Complimentary|Package)$/i.test(group.category));
+      const names = villaGroups.flatMap(group => group.items.map(item => item.name.replace(/\s+Villa$/i, '').trim()));
       villa.innerHTML = `<option value="">เลือก Villa / Room</option>${[...new Set(names)].map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}`;
     }
 
