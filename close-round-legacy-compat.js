@@ -38,9 +38,18 @@
   document.head.appendChild(style);
 
   function useCleanLogo(root = document) {
-    root.querySelectorAll('img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]').forEach(image => {
-      image.src = 'login-logo.png?v=20260816-clean-logo-2';
-    });
+    root.querySelectorAll('img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]')
+      .forEach(image => {
+        if (image.dataset.cleanLogoReady) return;
+        image.dataset.cleanLogoReady = 'true';
+        const original = image.getAttribute('src');
+        image.addEventListener('error', () => {
+          image.onerror = null;
+          image.src = original;
+          image.style.clipPath = 'inset(4px 0 0 0)';
+        }, { once: true });
+        image.src = './login-logo.png?v=20260816-clean-logo-3';
+      });
   }
 
   function applyLegacyOtherLabel() {
