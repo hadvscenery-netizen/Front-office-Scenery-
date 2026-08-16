@@ -1,16 +1,16 @@
-const CACHE_NAME='scenery-cashier-pwa-v17';
+const CACHE_NAME='scenery-cashier-pwa-v18';
 const APP_SHELL=[
   './',
   './index.html',
   './styles.css?v=20260812-villa-grid-3',
   './master-data.js?v=20260718-1730',
   './app.js?v=20260812-master-data-live-1',
-  './invoice-source-loader.js?v=20260816-invoice-source-5',
+  './invoice-source-loader.js?v=20260816-invoice-source-6',
   './supabase-config.js?v=20260801-1',
   './login-logo-inline.js?v=20260816-logo-inline-2',
   './supabase-bridge.js?v=20260813-auth-flow-2',
   './production-cleanup.js?v=20260801-auth-session-2',
-  './close-round-legacy-compat.js?v=20260816-legacy-compact-7',
+  './close-round-legacy-compat.js?v=20260816-legacy-compact-8',
   './manifest.webmanifest',
   './login-logo.png',
   './pwa-icon-192.png',
