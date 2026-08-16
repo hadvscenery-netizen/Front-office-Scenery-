@@ -32,7 +32,7 @@
     '#view-invoice .fallback-remove-line:hover{background:#fbe5e1;color:#8f2f2a}',
     '#view-invoice .fallback-deposit-control{display:grid;grid-template-columns:minmax(96px,1fr);gap:5px;min-width:132px}',
     '#view-invoice .fallback-line-deposit-method{display:block;width:100%;height:32px;box-sizing:border-box;padding:5px 8px;border:1px solid #d8c8bc;border-radius:6px;background:#fffdfb;color:#3e342e;font:inherit;font-size:12px;line-height:20px}',
-    '#view-invoice .fallback-line-deposit-method:focus{outline:0;border-color:#a56d3f;box-shadow:0 0 0 3px rgba(165,109,63,.15)}'
+    '#view-invoice .fallback-line-deposit-method:focus{outline:0;border-color:#a56d3f;box-shadow:0 0 0 3px rgba(165,109,63,.15)}',
     '#view-close-round .close-round-detail-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}',
     '#view-close-round .close-round-detail-table{min-width:1800px;font-size:12px}',
     '#view-close-round .close-round-detail-table th,#view-close-round .close-round-detail-table td{padding:5px 6px}',
