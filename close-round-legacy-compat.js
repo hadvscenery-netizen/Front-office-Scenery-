@@ -17,6 +17,7 @@
     '#view-invoice .preview-title h1{font-size:30px;margin-bottom:10px}',
     '#view-invoice .preview-meta{gap:8px 12px}',
     '#view-invoice .preview-table-wrap{overflow-x:auto}',
+    'img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]{clip-path:inset(2px 0 0 0)}',
     '#view-close-round .close-round-detail-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}',
     '#view-close-round .close-round-detail-table{min-width:1800px;font-size:12px}',
     '#view-close-round .close-round-detail-table th,#view-close-round .close-round-detail-table td{padding:5px 6px}',
@@ -37,14 +38,7 @@
   ].join('');
   document.head.appendChild(style);
 
-  function useCleanLogo() {
-    document.querySelectorAll('img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]').forEach(image => {
-      image.src = 'login-logo.png?v=20260816-clean-logo-1';
-    });
-  }
-
   function applyLegacyOtherLabel() {
-    useCleanLogo();
     document.querySelectorAll('#view-close-round th,#view-close-round h3,#view-close-round label,#view-close-round option')
       .forEach(node => {
         if (/^\u0e2d\u0e37\u0e48\u0e19\u0e46\s*\(/.test(node.textContent.trim())) node.textContent = '\u0e2d\u0e37\u0e48\u0e19\u0e46';
