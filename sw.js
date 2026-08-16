@@ -1,10 +1,10 @@
-const CACHE_NAME='scenery-cashier-pwa-v21';
+const CACHE_NAME='scenery-cashier-pwa-v22';
 const APP_SHELL=[
   './',
   './index.html',
   './styles.css?v=20260812-villa-grid-3',
   './master-data.js?v=20260718-1730',
-  './app.js?v=20260812-master-data-live-1',
+  './app.js?v=20260816-invoice-name-only-1',
   './invoice-source-loader.js?v=20260816-invoice-source-6',
   './supabase-config.js?v=20260801-1',
   './login-logo-inline.js?v=20260816-logo-inline-2',
