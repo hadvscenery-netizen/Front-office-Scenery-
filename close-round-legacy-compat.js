@@ -29,7 +29,7 @@
     '#view-invoice .fallback-line-rate,#view-invoice .fallback-line-deposit,#view-invoice .fallback-line-discount{display:block;width:100%;min-width:96px;max-width:124px;height:36px;box-sizing:border-box;padding:7px 9px;border:1px solid #d8c8bc;border-radius:6px;background:#fffdfb;color:#3e342e;font:inherit;font-size:13px;line-height:20px;text-align:right;box-shadow:inset 0 1px 2px rgba(76,52,36,.05)}',
     '#view-invoice .fallback-line-rate:focus,#view-invoice .fallback-line-deposit:focus,#view-invoice .fallback-line-discount:focus{outline:0;border-color:#a56d3f;box-shadow:0 0 0 3px rgba(165,109,63,.15)}',
     '#view-invoice .fallback-remove-line{width:34px;height:34px;padding:0;border:1px solid #ead6d0;border-radius:6px;color:#b34d45;background:#fff7f5;display:inline-flex;align-items:center;justify-content:center}',
-    '#view-invoice .fallback-remove-line:hover{background:#fbe5e1;color:#8f2f2a}'
+    '#view-invoice .fallback-remove-line:hover{background:#fbe5e1;color:#8f2f2a}',
     '#view-close-round .close-round-detail-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}',
     '#view-close-round .close-round-detail-table{min-width:1800px;font-size:12px}',
     '#view-close-round .close-round-detail-table th,#view-close-round .close-round-detail-table td{padding:5px 6px}',
