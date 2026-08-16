@@ -18,8 +18,20 @@
     const invoiceLines = Array.isArray(state?.invoiceLines) ? state.invoiceLines : [];
     const money = value => `฿${Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const row = (line, index) => {
-      const total = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0));
-      return `<tr data-fallback-line-index="${index}"><td>${escapeHtml(line.category)}</td><td>${escapeHtml(line.name)}</td><td class="align-center">${Number(line.qty || 0)}</td><td class="align-right">${money(line.rate)}</td><td class="align-right">${line.deposit ? money(line.deposit) : '-'}</td><td class="align-right">-</td><td class="align-right strong-number">${money(total)}</td><td></td></tr>`;
+      const gross = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0));
+      const discount = Math.max(0, Number(line.discountAmount || 0));
+      const total = Math.max(0, gross - discount);
+      const label = escapeHtml(line.name);
+      return '<tr data-fallback-line-index="' + index + '">' +
+        '<td>' + escapeHtml(line.category) + '</td>' +
+        '<td>' + label + '</td>' +
+        '<td class="align-center">' + Number(line.qty || 0) + '</td>' +
+        '<td class="align-right"><input class="fallback-line-rate" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + Number(line.rate || 0) + '" aria-label="แก้ Rate ' + label + '"></td>' +
+        '<td class="align-right"><input class="fallback-line-deposit" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + Number(line.deposit || 0) + '" aria-label="แก้ Deposit ' + label + '"></td>' +
+        '<td class="align-right"><input class="fallback-line-discount" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + discount + '" aria-label="แก้ส่วนลด ' + label + '"></td>' +
+        '<td class="align-right strong-number">' + money(total) + '</td>' +
+        '<td class="align-right"><button type="button" class="icon-button fallback-remove-line" data-fallback-line-index="' + index + '" aria-label="ลบรายการ"><span class="material-symbols-outlined">delete</span></button></td>' +
+      '</tr>';
     };
     [['accommodation', '#form-accommodation-lines', '#accommodation-empty'], ['addon', '#form-addon-lines', '#addon-empty']].forEach(([type, bodySelector, emptySelector]) => {
       const body = document.querySelector(bodySelector);
@@ -29,12 +41,48 @@
       const empty = document.querySelector(emptySelector);
       if (empty) empty.style.display = matches.length ? 'none' : 'block';
     });
-    const subtotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.qty || 0) * Number(line.rate || 0)), 0);
-    const summary = document.querySelector('#summary-total');
-    if (summary) summary.textContent = money(subtotal);
+    const grossTotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.qty || 0) * Number(line.rate || 0)), 0);
+    const depositTotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.deposit || 0)), 0);
+    const discountTotal = invoiceLines.reduce((sum, line) => sum + Math.max(0, Number(line.discountAmount || 0)), 0);
+    const outstanding = Math.max(0, grossTotal - discountTotal - depositTotal);
+    [['#summary-total', grossTotal], ['#summary-deposit', depositTotal], ['#summary-discount', discountTotal], ['#summary-outstanding', outstanding]].forEach(([selector, value]) => {
+      const element = document.querySelector(selector);
+      if (element) element.textContent = money(value);
+    });
     const preview = document.querySelector('#preview-invoice-lines');
-    if (preview) preview.innerHTML = invoiceLines.map(line => `<tr><td>${escapeHtml(line.category)}</td><td class="align-center">${Number(line.qty || 0)}</td><td>${escapeHtml(line.name)}</td><td class="align-right">${money(Number(line.qty || 0) * Number(line.rate || 0))}</td><td>${line.deposit ? money(line.deposit) : '-'}</td><td>-</td><td class="align-right">${money(Number(line.qty || 0) * Number(line.rate || 0))}</td></tr>`).join('');
+    if (preview) preview.innerHTML = invoiceLines.map(line => {
+      const gross = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0));
+      const discount = Math.max(0, Number(line.discountAmount || 0));
+      return '<tr><td>' + escapeHtml(line.category) + '</td><td class="align-center">' + Number(line.qty || 0) + '</td><td>' + escapeHtml(line.name) + '</td><td class="align-right">' + money(gross) + '</td><td>' + (line.deposit ? money(line.deposit) : '-') + '</td><td class="align-right">' + (discount ? money(discount) : '-') + '</td><td class="align-right">' + money(Math.max(0, gross - discount)) + '</td></tr>';
+    }).join('');
   };
+  const installFallbackLineControls = () => {
+    if (window.__SCENERY_FALLBACK_LINE_CONTROLS) return;
+    window.__SCENERY_FALLBACK_LINE_CONTROLS = true;
+    document.addEventListener('change', event => {
+      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount');
+      if (!input) return;
+      const state = window.sceneryAppState;
+      const index = Number(input.dataset.fallbackLineIndex);
+      const line = state?.invoiceLines?.[index];
+      if (!line) return;
+      if (input.classList.contains('fallback-line-rate')) line.rate = Math.max(0, numberFrom(input.value));
+      if (input.classList.contains('fallback-line-deposit')) line.deposit = Math.max(0, numberFrom(input.value));
+      if (input.classList.contains('fallback-line-discount')) line.discountAmount = Math.max(0, numberFrom(input.value));
+      renderFallbackLines();
+    });
+    document.addEventListener('click', event => {
+      const button = event.target.closest?.('.fallback-remove-line');
+      if (!button) return;
+      const state = window.sceneryAppState;
+      const index = Number(button.dataset.fallbackLineIndex);
+      if (!Array.isArray(state?.invoiceLines) || !state.invoiceLines[index]) return;
+      const removed = state.invoiceLines.splice(index, 1)[0];
+      renderFallbackLines();
+      notify(`ลบ ${removed.name} ออกจากใบแจ้งหนี้แล้ว`);
+    });
+  };
+  installFallbackLineControls();;
 
   function parseItem(line) {
     let name = clean(line);
