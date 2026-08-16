@@ -43,6 +43,19 @@
     if (avatar) avatar.textContent = email ? label.slice(0, 2).toUpperCase() : 'U';
   }
 
+  function currentProfileUser() {
+    const supabaseState = window.scenerySupabase || {};
+    const activeUser = supabaseState.user || supabaseState.session?.user || null;
+    if (activeUser?.email) return activeUser;
+    let rememberedEmail = '';
+    try { rememberedEmail = localStorage.getItem(loginEmailKey) || ''; } catch {}
+    return rememberedEmail ? { email: rememberedEmail } : null;
+  }
+
+  function syncProfile() {
+    setProfile(currentProfileUser());
+  }
+
   function emptyRow(colspan, icon, title, note = '') {
     return `<tr><td colspan="${colspan}"><div class="empty-state"><span class="material-symbols-outlined">${icon}</span><p>${title}</p>${note ? `<small>${note}</small>` : ''}</div></td></tr>`;
   }
@@ -109,7 +122,7 @@
 
   function boot() {
     clearLoginDemo();
-    setProfile(null);
+    syncProfile();
     cleanDashboard();
     removeOtherPrototypeRows();
     replaceDemoText();
@@ -131,13 +144,26 @@
       wrapped.__productionWrapped = true;
       window.syncInvoiceHistoryState = wrapped;
     }
-    if (window.scenerySupabase?.client) {
-      window.scenerySupabase.client.auth.getUser().then(result => setProfile(result.data?.user || null)).catch(() => {});
+    const authClient = window.scenerySupabase?.client;
+    if (authClient) {
+      authClient.auth.getUser().then(result => {
+        setProfile(result.data?.user || currentProfileUser());
+      }).catch(() => syncProfile());
       if (!window.scenerySupabase.__profileListener) {
-        window.scenerySupabase.client.auth.onAuthStateChange((_event, session) => setProfile(session?.user || null));
+        authClient.auth.onAuthStateChange((_event, session) => {
+          setProfile(session?.user || currentProfileUser());
+        });
         window.scenerySupabase.__profileListener = true;
       }
     }
+    syncProfile();
+    if (!window.__sceneryProfileFormListener) {
+      document.querySelector('#login-form')?.addEventListener('submit', () => {
+        [150, 700, 1500, 3000].forEach(delay => setTimeout(syncProfile, delay));
+      });
+      window.__sceneryProfileFormListener = true;
+    }
+    [100, 500, 1200, 2500, 5000].forEach(delay => setTimeout(syncProfile, delay));
   }
 
   boot();
