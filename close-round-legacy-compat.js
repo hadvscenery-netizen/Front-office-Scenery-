@@ -49,7 +49,7 @@
           image.src = original;
           image.style.clipPath = 'inset(4px 0 0 0)';
         }, { once: true });
-        image.src = './login-logo.png?v=20260816-clean-logo-4';
+        image.src = window.__SCENERY_CLEAN_LOGO_DATA || './login-logo.png?v=20260816-clean-logo-5';
       });
   }
 
