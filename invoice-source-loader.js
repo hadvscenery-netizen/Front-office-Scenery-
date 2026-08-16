@@ -4,6 +4,15 @@
   const clean = value => String(value ?? '').replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim();
   const numberFrom = value => Number(String(value ?? '').replace(/,/g, '')) || 0;
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const notify = (message, type = 'success') => {
+    if (typeof window.showToast === 'function') { window.showToast(message, type); return; }
+    const region = document.getElementById('toast-region');
+    if (!region) return;
+    region.textContent = message;
+    region.dataset.type = type;
+    region.classList.add('is-visible');
+    window.setTimeout(() => region.classList.remove('is-visible'), 2600);
+  };
 
   function parseItem(line) {
     let name = clean(line);
@@ -136,8 +145,8 @@
         event.preventDefault();
         const group = selectedGroup();
         const name = itemInput.value.trim();
-        if (!group) { showToast('กรุณาเลือกหมวดก่อนเพิ่มรายการ', 'error'); return; }
-        if (!name) { showToast('กรุณาเลือกรายการหรือพิมพ์รายการใหม่ก่อนเพิ่ม', 'error'); return; }
+        if (!group) { notify('กรุณาเลือกหมวดก่อนเพิ่มรายการ', 'error'); return; }
+        if (!name) { notify('กรุณาเลือกรายการหรือพิมพ์รายการใหม่ก่อนเพิ่ม', 'error'); return; }
         let item = group.items.find(entry => entry.name.toLowerCase() === name.toLowerCase());
         if (!item) {
           item = { name, rate: numberFrom(rateEl?.value), category: group.category, custom: true };
@@ -158,7 +167,7 @@
         refreshItems();
         if (typeof renderFormLines === 'function') renderFormLines();
         if (typeof calculateInvoice === 'function') calculateInvoice();
-        showToast(`เพิ่ม ${item.name} ลงในใบแจ้งหนี้แล้ว`);
+        notify(`เพิ่ม ${item.name} ลงในใบแจ้งหนี้แล้ว`);
       });
       refreshItems();
     });
@@ -174,7 +183,7 @@
       applyForm(data);
     } catch (error) {
       console.error('Invoice source data could not be loaded', error);
-      if (typeof showToast === 'function') showToast('โหลดข้อมูลสร้างใบแจ้งหนี้ไม่สำเร็จ', 'error');
+      notify('โหลดข้อมูลสร้างใบแจ้งหนี้ไม่สำเร็จ', 'error');
     }
   }
 
