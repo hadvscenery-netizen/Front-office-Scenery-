@@ -37,7 +37,14 @@
   ].join('');
   document.head.appendChild(style);
 
+  function useCleanLogo() {
+    document.querySelectorAll('img[src*="346973899_1639269593246469_4301917493848559029_n.jpg"]').forEach(image => {
+      image.src = 'login-logo.png?v=20260816-clean-logo-1';
+    });
+  }
+
   function applyLegacyOtherLabel() {
+    useCleanLogo();
     document.querySelectorAll('#view-close-round th,#view-close-round h3,#view-close-round label,#view-close-round option')
       .forEach(node => {
         if (/^\u0e2d\u0e37\u0e48\u0e19\u0e46\s*\(/.test(node.textContent.trim())) node.textContent = '\u0e2d\u0e37\u0e48\u0e19\u0e46';
