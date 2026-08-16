@@ -8,10 +8,15 @@
     if (typeof window.showToast === 'function') { window.showToast(message, type); return; }
     const region = document.getElementById('toast-region');
     if (!region) return;
-    region.textContent = message;
-    region.dataset.type = type;
-    region.classList.add('is-visible');
-    window.setTimeout(() => region.classList.remove('is-visible'), 2600);
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    region.appendChild(toast);
+    window.setTimeout(() => toast.classList.add('show'), 10);
+    window.setTimeout(() => {
+      toast.classList.remove('show');
+      window.setTimeout(() => toast.remove(), 300);
+    }, 3000);
   };
   const renderFallbackLines = () => {
     const state = window.sceneryAppState;
@@ -20,14 +25,18 @@
     const row = (line, index) => {
       const gross = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0));
       const discount = Math.max(0, Number(line.discountAmount || 0));
-      const total = Math.max(0, gross - discount);
+      const deposit = Math.max(0, Number(line.deposit || 0));
+      const total = Math.max(0, gross - discount - deposit);
       const label = escapeHtml(line.name);
+      const methods = ['เงินสด', 'บัตรเครดิต', 'QR Code', 'โอนเงิน SC'];
+      const selectedMethod = line.depositMethod || methods[0];
+      const methodOptions = methods.map(method => '<option value="' + escapeHtml(method) + '"' + (method === selectedMethod ? ' selected' : '') + '>' + escapeHtml(method) + '</option>').join('');
       return '<tr data-fallback-line-index="' + index + '">' +
         '<td>' + escapeHtml(line.category) + '</td>' +
         '<td>' + label + '</td>' +
         '<td class="align-center">' + Number(line.qty || 0) + '</td>' +
         '<td class="align-right"><input class="fallback-line-rate" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + Number(line.rate || 0) + '" aria-label="แก้ Rate ' + label + '"></td>' +
-        '<td class="align-right"><input class="fallback-line-deposit" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + Number(line.deposit || 0) + '" aria-label="แก้ Deposit ' + label + '"></td>' +
+        '<td class="align-right"><div class="fallback-deposit-control"><input class="fallback-line-deposit" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + Number(line.deposit || 0) + '" aria-label="แก้ Deposit ' + label + '"><select class="fallback-line-deposit-method" data-fallback-line-index="' + index + '" aria-label="ช่องทาง Deposit ' + label + '">' + methodOptions + '</select></div></td>' +
         '<td class="align-right"><input class="fallback-line-discount" data-fallback-line-index="' + index + '" type="number" min="0" step="0.01" value="' + discount + '" aria-label="แก้ส่วนลด ' + label + '"></td>' +
         '<td class="align-right strong-number">' + money(total) + '</td>' +
         '<td class="align-right"><button type="button" class="icon-button fallback-remove-line" data-fallback-line-index="' + index + '" aria-label="ลบรายการ"><span class="material-symbols-outlined">delete</span></button></td>' +
@@ -53,7 +62,7 @@
     if (preview) preview.innerHTML = invoiceLines.map(line => {
       const gross = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0));
       const discount = Math.max(0, Number(line.discountAmount || 0));
-      return '<tr><td>' + escapeHtml(line.category) + '</td><td class="align-center">' + Number(line.qty || 0) + '</td><td>' + escapeHtml(line.name) + '</td><td class="align-right">' + money(gross) + '</td><td>' + (line.deposit ? money(line.deposit) : '-') + '</td><td class="align-right">' + (discount ? money(discount) : '-') + '</td><td class="align-right">' + money(Math.max(0, gross - discount)) + '</td></tr>';
+      return '<tr><td>' + escapeHtml(line.category) + '</td><td class="align-center">' + Number(line.qty || 0) + '</td><td>' + escapeHtml(line.name) + '</td><td class="align-right">' + money(gross) + '</td><td>' + (line.deposit ? money(line.deposit) : '-') + '</td><td class="align-right">' + (discount ? money(discount) : '-') + '</td><td class="align-right">' + money(Math.max(0, gross - discount - Number(line.deposit || 0))) + '</td></tr>';
     }).join('');
   };
   const updateFallbackTotals = () => {
@@ -71,7 +80,7 @@
     invoiceLines.forEach((line, index) => {
       const row = document.querySelector('tr[data-fallback-line-index="' + index + '"]');
       if (!row) return;
-      const total = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0) - Number(line.discountAmount || 0));
+      const total = Math.max(0, Number(line.qty || 0) * Number(line.rate || 0) - Number(line.discountAmount || 0) - Number(line.deposit || 0));
       const totalCell = row.querySelector('td:nth-child(7)');
       if (totalCell) totalCell.textContent = money(total);
     });
@@ -87,15 +96,16 @@
       if (input.classList.contains('fallback-line-rate')) line.rate = Math.max(0, numberFrom(input.value));
       if (input.classList.contains('fallback-line-deposit')) line.deposit = Math.max(0, numberFrom(input.value));
       if (input.classList.contains('fallback-line-discount')) line.discountAmount = Math.max(0, numberFrom(input.value));
+      if (input.classList.contains('fallback-line-deposit-method')) line.depositMethod = input.value || 'เงินสด';
       return true;
     };
     document.addEventListener('input', event => {
-      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount');
+      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount, .fallback-line-deposit-method');
       if (!input || !updateLineFromInput(input)) return;
       updateFallbackTotals();
     });
     document.addEventListener('change', event => {
-      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount');
+      const input = event.target.closest?.('.fallback-line-rate, .fallback-line-deposit, .fallback-line-discount, .fallback-line-deposit-method');
       if (!input || !updateLineFromInput(input)) return;
       renderFallbackLines();
     });
