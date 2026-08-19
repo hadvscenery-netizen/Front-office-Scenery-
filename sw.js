@@ -1,4 +1,4 @@
-const CACHE_NAME='scenery-cashier-pwa-v25';
+const CACHE_NAME='scenery-cashier-pwa-v26';
 const APP_SHELL=[
   './',
   './index.html',
@@ -10,7 +10,7 @@ const APP_SHELL=[
   './login-logo-inline.js?v=20260816-logo-inline-2',
   './supabase-bridge.js?v=20260819-online-sync-1',
   './production-cleanup.js?v=20260816-profile-email-2',
-  './close-round-print-fix.js?v=20260819-a4-template-3',
+  './close-round-print-fix.js?v=20260819-a4-template-4',
   './close-round-legacy-compat.js?v=20260816-legacy-compact-10',
   './manifest.webmanifest',
   './login-logo.png',
