@@ -64,26 +64,39 @@
   }
 
   function summaryMarkup(records) {
-    if (typeof closeRoundPrintSummaryMarkup === 'function') {
-      const markup = closeRoundPrintSummaryMarkup(records);
-      if (markup) return markup;
-    }
     const models = (records || []).map((record) => (
       typeof closeRoundRecordModel === 'function'
         ? closeRoundRecordModel(record)
         : record || {}
     ));
     const total = (key) => models.reduce((sum, row) => sum + Number(row[key] || 0), 0);
-    const format = (value) => typeof money === 'function'
+    const format = (value) => Number(value || 0) === 0 ? 'ศูนย์บาทถ้วน' : typeof money === 'function'
       ? money(value)
       : Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+    const channels = [
+      ['เงินสด', 'cash'],
+      ['บัตรเครดิต', 'card'],
+      ['QR Code', 'qr'],
+      ['โอนเงิน SC', 'transfer'],
+      ['รัฐ 50%', 'government'],
+      ['ททท.', 'tat'],
+      ['ไม่เรียกเก็บ', 'noCharge'],
+      ['ค้างชำระ', 'pending'],
+    ];
+    const channelTotal = (key) => models.reduce(
+      (sum, row) => sum + Number(row.payments?.[key] || 0),
+      0,
+    );
+    const sales = total('total');
+    const deposit = total('deposit');
+    const frontIncome = Math.max(0, sales - deposit);
+    const line = (label, value) => `<div class="close-round-print-summary-line"><span>${label}</span><strong>${format(value)}</strong></div>`;
     return '<section class="close-round-print-summary">'
-      + '<div class="close-round-print-summary-heading"><strong>Total Summary / สรุปรวม</strong></div>'
-      + `<div><span>รายการ</span><strong>${models.length}</strong></div>`
-      + `<div><span>ยอดรวม</span><strong>${format(total('total'))}</strong></div>`
-      + `<div><span>Deposit</span><strong>${format(total('deposit'))}</strong></div>`
-      + `<div><span>คงเหลือ</span><strong>${format(total('outstanding'))}</strong></div>`
-      + `<div><span>ค้างชำระ</span><strong>${format(total('pending'))}</strong></div>`
+      + '<div class="close-round-print-summary-heading"><strong>สรุปรวม</strong></div>'
+      + line('รวม', sales)
+      + line('หักค่าบ้านพักชำระล่วงหน้า', deposit)
+      + line('รวมรายได้หน้า Front วันนี้', frontIncome)
+      + channels.map(([label, key]) => line(label, channelTotal(key))).join('')
       + '</section>';
   }
 
@@ -119,6 +132,7 @@
       .close-round-detail-table .total-row td{font-weight:700;background:#faf1ec}
       .close-round-print-summary{display:flex;flex-wrap:wrap;gap:2mm;width:284.3mm;margin-top:3mm;padding-top:2mm;border-top:1.5px solid #6e442d;font-size:8px;line-height:1.2;break-inside:avoid;page-break-inside:avoid}
       .close-round-print-summary>div{flex:1 1 30mm;min-width:30mm;border:1px solid #b9a99d;padding:1.5mm;text-align:center}
+      .close-round-print-summary>div.close-round-print-summary-line{display:flex;justify-content:space-between;align-items:center;gap:4mm;text-align:left}
       .close-round-print-summary>div.close-round-print-summary-heading{flex:0 0 100%;border:0;padding:0;text-align:left;font-weight:700;color:#6e442d}
       .close-round-print-summary span,.close-round-print-summary strong{display:block}
       .close-round-print-summary span{font-size:7.5px;color:#66584e}
