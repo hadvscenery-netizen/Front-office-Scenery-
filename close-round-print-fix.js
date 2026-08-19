@@ -20,6 +20,19 @@
     return control.value || control.textContent || '';
   }
 
+  function normalizePrintNumber(value) {
+    const text = String(value ?? '').trim();
+    const match = text.match(/^([^0-9-]*)(-?[0-9][0-9,]*(?:\.[0-9]+)?)(.*)$/);
+    if (!match) return text;
+    const number = Number(match[2].replace(/,/g, ''));
+    if (!Number.isFinite(number)) return text;
+    const formatted = number.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    return `${match[1]}${formatted}${match[3]}`;
+  }
+
   function addTemplateColumns(table) {
     table.querySelector('colgroup')?.remove();
     const colgroup = document.createElement('colgroup');
@@ -60,6 +73,9 @@
       span.textContent = button.textContent.trim();
       button.replaceWith(span);
     });
+    table.querySelectorAll('td.align-right, td.strong-number').forEach((cell) => {
+      cell.textContent = normalizePrintNumber(cell.textContent);
+    });
     return table;
   }
 
@@ -70,9 +86,9 @@
         : record || {}
     ));
     const total = (key) => models.reduce((sum, row) => sum + Number(row[key] || 0), 0);
-    const format = (value) => typeof money === 'function'
+    const format = (value) => normalizePrintNumber(typeof money === 'function'
       ? money(value)
-      : Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+      : Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 }));
     const channels = [
       ['เงินสด', 'cash'],
       ['บัตรเครดิต', 'card'],
