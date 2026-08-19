@@ -123,28 +123,33 @@
     return hydratePromise;
   }
   function installPersistenceWrappers(){
-    if(originals.saveInvoiceHistory&&!window.saveInvoiceHistory.__supabaseWrapped){
-      const localSave=originals.saveInvoiceHistory;
+    const saveInvoiceHistory=originals.saveInvoiceHistory||window.saveInvoiceHistory;
+    const saveClosedBookings=originals.saveClosedBookings||window.saveClosedBookings;
+    const deleteInvoiceHistory=originals.deleteInvoiceHistory||window.deleteInvoiceHistory;
+    const submitCloseRound=originals.submitCloseRound||window.submitCloseRound;
+    const saveCloseRoundDetailEdit=originals.saveCloseRoundDetailEdit||window.saveCloseRoundDetailEdit;
+    if(saveInvoiceHistory&&!window.saveInvoiceHistory.__supabaseWrapped){
+      const localSave=saveInvoiceHistory;
       window.saveInvoiceHistory=function(records){localSave(records);if(client)upsertInvoices(records).catch(error=>notify(`บันทึก Invoice ขึ้น Supabase ไม่สำเร็จ: ${error.message||error}`,'error'))};
       window.saveInvoiceHistory.__supabaseWrapped=true;
     }
-    if(originals.saveClosedBookings&&!window.saveClosedBookings.__supabaseWrapped){
-      const localSave=originals.saveClosedBookings;
+    if(saveClosedBookings&&!window.saveClosedBookings.__supabaseWrapped){
+      const localSave=saveClosedBookings;
       window.saveClosedBookings=function(){localSave();if(client)upsertBookings(window.sceneryAppState?.closedBookings||[]).catch(error=>notify(`บันทึกหลักฐานการจองไม่สำเร็จ: ${error.message||error}`,'error'))};
       window.saveClosedBookings.__supabaseWrapped=true;
     }
-    if(originals.deleteInvoiceHistory&&!window.deleteInvoiceHistory.__supabaseWrapped){
-      const localDelete=originals.deleteInvoiceHistory;
+    if(deleteInvoiceHistory&&!window.deleteInvoiceHistory.__supabaseWrapped){
+      const localDelete=deleteInvoiceHistory;
       window.deleteInvoiceHistory=function(id){localDelete(id);if(client)deleteInvoiceRemote(id).catch(error=>notify(`ลบ Invoice จาก Supabase ไม่สำเร็จ: ${error.message||error}`,'error'))};
       window.deleteInvoiceHistory.__supabaseWrapped=true;
     }
-    if(originals.submitCloseRound&&!window.submitCloseRound.__supabaseWrapped){
-      const localSubmit=originals.submitCloseRound;
+    if(submitCloseRound&&!window.submitCloseRound.__supabaseWrapped){
+      const localSubmit=submitCloseRound;
       window.submitCloseRound=function(){localSubmit();if(client)syncRounds().catch(error=>notify(`บันทึกปิดรอบขึ้น Supabase ไม่สำเร็จ: ${error.message||error}`,'error'))};
       window.submitCloseRound.__supabaseWrapped=true;
     }
-    if(originals.saveCloseRoundDetailEdit&&!window.saveCloseRoundDetailEdit.__supabaseWrapped){
-      const localSave=originals.saveCloseRoundDetailEdit;
+    if(saveCloseRoundDetailEdit&&!window.saveCloseRoundDetailEdit.__supabaseWrapped){
+      const localSave=saveCloseRoundDetailEdit;
       window.saveCloseRoundDetailEdit=function(recordId,field,value){localSave(recordId,field,value);if(client){const payload=readLocal(localEditsKey,{});currentUser().then(user=>client.from('close_round_edits').upsert({record_id:String(recordId),payload:payload[String(recordId)]||{},updated_by:user?.id||null},{onConflict:'record_id'})).catch(error=>notify(`บันทึกหมายเหตุปิดรอบไม่สำเร็จ: ${error.message||error}`,'error'))}};
       window.saveCloseRoundDetailEdit.__supabaseWrapped=true;
     }
@@ -184,12 +189,16 @@
   }
   installPersistenceWrappers();
   document.addEventListener('DOMContentLoaded',async()=>{
+    installPersistenceWrappers();
     installAuth();
     if(!client){window.scenerySupabase.mode='local';return}
     document.querySelector('#login-screen')?.classList.remove('is-hidden');
     document.querySelector('#app-screen')?.classList.add('is-hidden');
     const session=await client.auth.getSession();
     if(session.data?.session){document.querySelector('#login-screen')?.classList.add('is-hidden');document.querySelector('#app-screen')?.classList.remove('is-hidden');await hydrate()}
+    client.auth.onAuthStateChange((event,sessionState)=>{
+      if(sessionState&&['SIGNED_IN','TOKEN_REFRESHED','USER_UPDATED'].includes(event))hydrate().catch(()=>{});
+    });
     installRealtime();
   });
 })();
