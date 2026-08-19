@@ -20,6 +20,19 @@
     return control.value || control.textContent || '';
   }
 
+  function normalizePrintNumber(value) {
+    const text = String(value ?? '').trim();
+    const match = text.match(/^([^0-9-]*)(-?[0-9][0-9,]*(?:\.[0-9]+)?)(.*)$/);
+    if (!match) return text;
+    const number = Number(match[2].replace(/,/g, ''));
+    if (!Number.isFinite(number)) return text;
+    const formatted = number.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    return `${match[1]}${formatted}${match[3]}`;
+  }
+
   function addTemplateColumns(table) {
     table.querySelector('colgroup')?.remove();
     const colgroup = document.createElement('colgroup');
@@ -60,6 +73,9 @@
       span.textContent = button.textContent.trim();
       button.replaceWith(span);
     });
+    table.querySelectorAll('td.align-right, td.strong-number').forEach((cell) => {
+      cell.textContent = normalizePrintNumber(cell.textContent);
+    });
     return table;
   }
 
@@ -70,9 +86,9 @@
         : record || {}
     ));
     const total = (key) => models.reduce((sum, row) => sum + Number(row[key] || 0), 0);
-    const format = (value) => Number(value || 0) === 0 ? 'ศูนย์บาทถ้วน' : typeof money === 'function'
+    const format = (value) => normalizePrintNumber(typeof money === 'function'
       ? money(value)
-      : Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+      : Number(value || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 }));
     const channels = [
       ['เงินสด', 'cash'],
       ['บัตรเครดิต', 'card'],
@@ -90,9 +106,9 @@
     const sales = total('total');
     const deposit = total('deposit');
     const frontIncome = Math.max(0, sales - deposit);
-    const line = (label, value) => `<div class="close-round-print-summary-line"><span>${label}</span><strong>${format(value)}</strong></div>`;
+    const line = (label, value) => `<p><span>${label}</span> ${format(value)}</p>`;
     return '<section class="close-round-print-summary">'
-      + '<div class="close-round-print-summary-heading"><strong>สรุปรวม</strong></div>'
+      + '<p class="close-round-print-summary-heading"><strong>สรุปรวม</strong></p>'
       + line('รวม', sales)
       + line('หักค่าบ้านพักชำระล่วงหน้า', deposit)
       + line('รวมรายได้หน้า Front วันนี้', frontIncome)
@@ -130,14 +146,12 @@
       .close-round-detail-table tbody tr{break-inside:avoid;page-break-inside:avoid}
       .close-round-detail-table .close-round-print-value{display:inline;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
       .close-round-detail-table .total-row td{font-weight:700;background:#faf1ec}
-      .close-round-print-summary{display:flex;flex-wrap:wrap;gap:2mm;width:284.3mm;margin-top:3mm;padding-top:2mm;border-top:1.5px solid #6e442d;font-size:8px;line-height:1.2;break-inside:avoid;page-break-inside:avoid}
-      .close-round-print-summary>div{flex:1 1 30mm;min-width:30mm;border:1px solid #b9a99d;padding:1.5mm;text-align:center}
-      .close-round-print-summary>div.close-round-print-summary-line{display:flex;justify-content:space-between;align-items:center;gap:4mm;text-align:left}
-      .close-round-print-summary>div.close-round-print-summary-heading{flex:0 0 100%;border:0;padding:0;text-align:left;font-weight:700;color:#6e442d}
-      .close-round-print-summary span,.close-round-print-summary strong{display:block}
-      .close-round-print-summary span{font-size:7.5px;color:#66584e}
-      .close-round-print-summary strong{font-size:9px;margin-top:.5mm}
-      .close-round-print-summary p{margin:0;font-size:8px;line-height:1.2}
+      .close-round-print-summary{width:284.3mm;margin-top:3mm;padding-top:2mm;border-top:1.5px solid #6e442d;font-size:8px;line-height:1.35;break-inside:avoid;page-break-inside:avoid}
+      .close-round-print-summary p{margin:0 0 1mm;font-size:8px;line-height:1.35}
+      .close-round-print-summary p:last-child{margin-bottom:0}
+      .close-round-print-summary .close-round-print-summary-heading{margin-bottom:1.5mm;color:#6e442d;font-weight:700}
+      .close-round-print-summary span{color:#66584e}
+      .close-round-print-summary strong{font-size:9px}
     `;
 
     const frame = document.createElement('iframe');
