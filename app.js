@@ -6,6 +6,6 @@
  * all tabs and forms keep their event listeners.
  */
 (function () {
-  const build = '20260819-csp-direct-1';
+  const build = '20260819-csp-direct-2';
   document.write('<script src="app-source.js?v=' + build + '"><\\/script>');
 }());
