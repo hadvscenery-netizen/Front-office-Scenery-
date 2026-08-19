@@ -12,6 +12,14 @@
   const notify=(message,type='info')=>{if(typeof window.showToast==='function')window.showToast(message,type)};
   const readLocal=(key,fallback)=>{try{const value=JSON.parse(localStorage.getItem(key)||'null');return value??fallback}catch{return fallback}};
   const writeLocal=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
+  const recordKey=record=>String(record?.id||record?.reference||'');
+  const mergeSharedRecords=(remote,local)=>{
+    const merged=new Map((remote||[]).map(record=>[recordKey(record),record]));
+    (local||[]).forEach(record=>{const key=recordKey(record);if(key&&!merged.has(key))merged.set(key,record)});
+    return [...merged.values()];
+  };
+  const broadcast=typeof BroadcastChannel==='function'?new BroadcastChannel('scenery-shared-sync'):null;
+  const announceSync=()=>broadcast?.postMessage({type:'refresh',at:Date.now()});
   const currentUser=async()=>{if(!client)return null;const result=await client.auth.getUser();return result.data?.user||null};
   const invoiceDiscount=record=>{const payload=record?.payload&&typeof record.payload==='object'?record.payload:null;const source=payload&&Object.prototype.hasOwnProperty.call(payload,'discount')?payload:record;const value=Number(source?.discount);return Number.isFinite(value)?Math.max(0,value):0};
   const invoiceRow=async record=>{const user=await currentUser();return{id:String(record.id||record.reference||`INV-${Date.now()}`),reference:record.reference||record.id||null,business_date:record.businessDate||new Date().toISOString().slice(0,10),customer:record.customer||'',villa:record.villa||'',villa_code:record.villaCode||'',total:Number(record.total||0),discount:invoiceDiscount(record),deposit:Number(record.deposit||0),pending_total:Number(record.pendingTotal||0),status:record.status||'ชำระแล้ว',payload:record,created_by:user?.id||null};};
@@ -28,7 +36,12 @@
     const repairs=[];
     const remote=(result.data||[]).map(row=>{const payload=row.payload&&typeof row.payload==='object'?row.payload:{},payloadHasDiscount=Object.prototype.hasOwnProperty.call(payload,'discount'),discount=payloadHasDiscount?Math.max(0,Number(payload.discount)||0):Math.max(0,Number(row.discount)||0),record={...payload,id:row.id,reference:row.reference||payload.reference||row.id,businessDate:row.business_date,customer:row.customer,villa:row.villa,villaCode:row.villa_code,total:Number(row.total||0),discount,deposit:Number(row.deposit||0),pendingTotal:Number(row.pending_total||0),status:row.status};if(payloadHasDiscount&&Math.abs(Number(row.discount||0)-discount)>0.005)repairs.push(record);return record});
     const local=readLocal(localHistoryKey,[]);
-    if(remote.length){writeLocal(localHistoryKey,remote);if(repairs.length)await upsertInvoices(repairs)}else if(local.length){await upsertInvoices(local)}
+    if(remote.length){
+      const missing=local.filter(record=>!remote.some(item=>recordKey(item)===recordKey(record)));
+      if(missing.length)await upsertInvoices(missing);
+      writeLocal(localHistoryKey,mergeSharedRecords(remote,local));
+      if(repairs.length)await upsertInvoices(repairs);
+    }else if(local.length){await upsertInvoices(local)}
     if(typeof window.syncInvoiceHistoryState==='function')window.syncInvoiceHistoryState();
     if(typeof window.renderCloseRound==='function'&&window.sceneryAppState?.currentView==='close-round')window.renderCloseRound();
   }
@@ -38,7 +51,13 @@
     if(result.error)throw result.error;
     const remote=(result.data||[]).map(row=>({...row.payload,id:row.id,reference:row.reference||row.payload?.reference||row.id,businessDate:row.business_date,customer:row.customer,villa:row.villa,total:Number(row.total||0)}));
     const local=readLocal(localBookingsKey,[]);
-    if(remote.length){writeLocal(localBookingsKey,remote);if(window.sceneryAppState)window.sceneryAppState.closedBookings=remote;}
+    if(remote.length){
+      const missing=local.filter(record=>!remote.some(item=>recordKey(item)===recordKey(record)));
+      if(missing.length)await upsertBookings(missing);
+      const merged=mergeSharedRecords(remote,local);
+      writeLocal(localBookingsKey,merged);
+      if(window.sceneryAppState)window.sceneryAppState.closedBookings=merged;
+    }
     else if(local.length)await upsertBookings(local);
     if(typeof window.renderBookingRecords==='function')window.renderBookingRecords();
   }
@@ -55,7 +74,7 @@
     if(result.error)throw result.error;
     const remote=(result.data||[]).map(row=>({...row.payload,id:row.id,businessDate:row.business_date,status:row.status,submittedAt:row.submitted_at,totals:row.totals||{}}));
     const local=readLocal(localRoundsKey,[]);
-    if(remote.length){writeLocal(localRoundsKey,remote);if(typeof window.renderCloseRound==='function')window.renderCloseRound()}
+    if(remote.length){writeLocal(localRoundsKey,mergeSharedRecords(remote,local));if(typeof window.renderCloseRound==='function')window.renderCloseRound()}
     else if(local.length)await syncRounds();
   }
   async function pullEdits(){
@@ -147,15 +166,21 @@
   let syncTimer=null;
   function installRealtime(){
     if(!client)return;
+    broadcast?.addEventListener('message',event=>{if(event.data?.type==='refresh')hydrate().catch(()=>{})});
     client.channel('scenery-shared-data')
       .on('postgres_changes',{event:'*',schema:'public',table:'invoice_history'},()=>pullInvoices().catch(()=>{}))
       .on('postgres_changes',{event:'*',schema:'public',table:'closed_bookings'},()=>pullBookings().catch(()=>{}))
       .on('postgres_changes',{event:'*',schema:'public',table:'close_rounds'},()=>pullRounds().catch(()=>{}))
       .on('postgres_changes',{event:'*',schema:'public',table:'close_round_edits'},()=>pullEdits().catch(()=>{}))
       .on('postgres_changes',{event:'*',schema:'public',table:'audit_logs'},()=>pullAudit().catch(()=>{}))
-      .subscribe();
+      .subscribe((status,error)=>{
+        window.scenerySupabase.realtimeStatus=status;
+        if(error)window.scenerySupabase.realtimeError=error;
+      });
     clearInterval(syncTimer);
-    syncTimer=setInterval(()=>hydrate().catch(()=>{}),15000);
+    syncTimer=setInterval(()=>hydrate().catch(()=>{}),5000);
+    window.addEventListener('focus',()=>hydrate().catch(()=>{}));
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)hydrate().catch(()=>{})});
   }
   installPersistenceWrappers();
   document.addEventListener('DOMContentLoaded',async()=>{
