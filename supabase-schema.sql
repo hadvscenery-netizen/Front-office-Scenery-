@@ -118,12 +118,20 @@ create policy audit_logs_authenticated_all on public.audit_logs for all to authe
 alter table public.invoice_history replica identity full;
 alter table public.close_rounds replica identity full;
 alter table public.audit_logs replica identity full;
+alter table public.closed_bookings replica identity full;
+alter table public.close_round_edits replica identity full;
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='invoice_history') then
     alter publication supabase_realtime add table public.invoice_history;
   end if;
   if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='close_rounds') then
     alter publication supabase_realtime add table public.close_rounds;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='closed_bookings') then
+    alter publication supabase_realtime add table public.closed_bookings;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='close_round_edits') then
+    alter publication supabase_realtime add table public.close_round_edits;
   end if;
   if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='audit_logs') then
     alter publication supabase_realtime add table public.audit_logs;
