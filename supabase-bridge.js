@@ -4,11 +4,49 @@
  */
 (() => {
   const config=window.SCENERY_SUPABASE_CONFIG||{};
-  const hasConfig=Boolean(config.url&&config.anonKey&&window.supabase?.createClient);
-  const client=hasConfig?window.supabase.createClient(config.url,config.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):null;
+  const hasConfig=Boolean(config.url&&config.anonKey);
+  const apiRoot=String(config.url||'').replace(/\/$/,'');
+  const authToken=()=>window.scenerySupabase?.session?.access_token||'';
+  const restRequest=async(path,options={})=>{
+    const headers={'apikey':config.anonKey,'Content-Type':'application/json',...(options.headers||{})};
+    const token=authToken();if(token)headers.Authorization='Bearer '+token;
+    const response=await fetch(apiRoot+path,{...options,headers});
+    const body=await response.text();let data=null;try{data=body?JSON.parse(body):null}catch{data=body}
+    if(!response.ok)return{data:null,error:new Error(data?.message||data?.hint||data?.error_description||body||('HTTP '+response.status))};
+    return{data,error:null};
+  };
+  const restClient=hasConfig?{
+    auth:{
+      getUser:()=>{const token=authToken();return token?restRequest('/auth/v1/user'):Promise.resolve({data:{user:null},error:null})},
+      getSession:()=>Promise.resolve({data:{session:window.scenerySupabase?.session||null},error:null}),
+      onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})
+    },
+    from(table){
+      const state={method:'GET',query:[],orders:[],limit:null,body:null,upsert:false};
+      const builder={
+        select(columns='*'){state.method='GET';state.query.push('select='+encodeURIComponent(columns));return builder},
+        order(column,options={}){state.orders.push(column+'.'+(options.ascending===false?'desc':'asc'));return builder},
+        limit(value){state.limit=Number(value);return builder},
+        eq(column,value){state.query.push(encodeURIComponent(column)+'='+encodeURIComponent('eq.'+value));return builder},
+        insert(body){state.method='POST';state.body=body;return builder},
+        upsert(body){state.method='POST';state.body=body;state.upsert=true;return builder},
+        delete(){state.method='DELETE';return builder},
+        then(resolve,reject){
+          const run=async()=>{
+            const params=[...state.query];if(state.orders.length)params.push('order='+encodeURIComponent(state.orders.join(',')));if(state.limit)params.push('limit='+state.limit);
+            const headers=state.upsert?{'Prefer':'resolution=merge-duplicates,return=representation'}:{};
+            return restRequest('/rest/v1/'+encodeURIComponent(table)+(params.length?'?'+params.join('&'):''),{method:state.method,headers,body:state.body==null?undefined:JSON.stringify(state.body)});
+          };
+          return run().then(resolve,reject);
+        }
+      };
+      return builder;
+    }
+  }:null;
+  const client=window.supabase?.createClient&&hasConfig?window.supabase.createClient(config.url,config.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):restClient;
   const localHistoryKey='scenery-invoice-history',localBookingsKey='scenery-closed-bookings',localRoundsKey='scenery-closed-rounds',localEditsKey='scenery-close-round-detail-edits',localAuditKey='scenery-audit-log',loginEmailKey='scenery-last-login-email';
   const originals={saveInvoiceHistory:window.saveInvoiceHistory,saveClosedBookings:window.saveClosedBookings,deleteInvoiceHistory:window.deleteInvoiceHistory,submitCloseRound:window.submitCloseRound,saveCloseRoundDetailEdit:window.saveCloseRoundDetailEdit};
-  window.scenerySupabase={enabled:hasConfig,client,mode:hasConfig?'supabase':'local'};
+  window.scenerySupabase={enabled:hasConfig,client,mode:client?(window.supabase?.createClient?'supabase':'supabase-rest'):'local'};
   const notify=(message,type='info')=>{if(typeof window.showToast==='function')window.showToast(message,type)};
   const readLocal=(key,fallback)=>{try{const value=JSON.parse(localStorage.getItem(key)||'null');return value??fallback}catch{return fallback}};
   const writeLocal=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
@@ -22,12 +60,12 @@
   const announceSync=()=>broadcast?.postMessage({type:'refresh',at:Date.now()});
   const currentUser=async()=>{if(!client)return null;const result=await client.auth.getUser();return result.data?.user||null};
   const invoiceDiscount=record=>{const payload=record?.payload&&typeof record.payload==='object'?record.payload:null;const source=payload&&Object.prototype.hasOwnProperty.call(payload,'discount')?payload:record;const value=Number(source?.discount);return Number.isFinite(value)?Math.max(0,value):0};
-  const invoiceRow=async record=>{const user=await currentUser();return{id:String(record.id||record.reference||`INV-${Date.now()}`),reference:record.reference||record.id||null,business_date:record.businessDate||new Date().toISOString().slice(0,10),customer:record.customer||'',villa:record.villa||'',villa_code:record.villaCode||'',total:Number(record.total||0),discount:invoiceDiscount(record),deposit:Number(record.deposit||0),pending_total:Number(record.pendingTotal||0),status:record.status||'ชำระแล้ว',payload:record,created_by:user?.id||null};};
+  const invoiceRow=async record=>{const user=await currentUser();return{id:String(record.id||record.reference||`INV-${Date.now()}`),reference:record.reference||record.id||null,business_date:record.businessDate||new Date().toISOString().slice(0,10),customer:record.customer||'',villa:record.villa||'',villa_code:record.villaCode||'',total:Number(record.total||0),discount:invoiceDiscount(record),deposit:Number(record.deposit||0),pending_total:Number(record.pendingTotal||0),status:record.status||'à¸Šà¸³à¸£à¸°à¹à¸¥à¹‰à¸§',payload:record,created_by:user?.id||null};};
   const bookingRow=async record=>{const user=await currentUser();return{id:String(record.id||record.reference||`BOOK-${Date.now()}`),reference:record.reference||record.id||null,business_date:record.businessDate||null,customer:record.customer||'',villa:record.villa||'',total:Number(record.total||0),payload:record,created_by:user?.id||null};};
   async function upsertInvoices(records){if(!client)return;const rows=[];for(const record of records||[])rows.push(await invoiceRow(record));if(rows.length){const result=await client.from('invoice_history').upsert(rows,{onConflict:'id'});if(result.error)throw result.error}}
   async function upsertBookings(records){if(!client)return;const rows=[];for(const record of records||[])rows.push(await bookingRow(record));if(rows.length){const result=await client.from('closed_bookings').upsert(rows,{onConflict:'id'});if(result.error)throw result.error}}
   async function recordAudit(entry){if(!client)return;const user=await currentUser();const result=await client.from('audit_logs').insert({id:entry.id?.startsWith('AUD-')?undefined:entry.id,action:entry.action,entity_type:entry.entityType,entity_id:entry.entityId||null,before_data:entry.beforeData,after_data:entry.afterData,metadata:entry.metadata||{},actor_id:user?.id||null,created_at:entry.createdAt||new Date().toISOString()});if(result.error)throw result.error}
-  window.scenerySupabase.recordAudit=entry=>recordAudit(entry).catch(error=>notify(`บันทึก Audit Log ไม่สำเร็จ: ${error.message||error}`,'error'));
+  window.scenerySupabase.recordAudit=entry=>recordAudit(entry).catch(error=>notify(`à¸šà¸±à¸™à¸—à¸¶à¸ Audit Log à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error'));
   async function deleteInvoiceRemote(id){if(!client)return;const invoiceResult=await client.from('invoice_history').delete().eq('id',String(id));if(invoiceResult.error)throw invoiceResult.error;const bookingResult=await client.from('closed_bookings').delete().eq('id',String(id));if(bookingResult.error)throw bookingResult.error}
   async function pullInvoices(){
     if(!client)return;
@@ -99,7 +137,7 @@
     if(!client)return;
     const result=await client.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(500);
     if(result.error)throw result.error;
-    const remote=(result.data||[]).map(row=>({id:row.id,action:row.action,entityType:row.entity_type,entityId:row.entity_id,beforeData:row.before_data,afterData:row.after_data,metadata:row.metadata||{},actor:row.actor_id||'ผู้ใช้งาน',createdAt:row.created_at}));
+    const remote=(result.data||[]).map(row=>({id:row.id,action:row.action,entityType:row.entity_type,entityId:row.entity_id,beforeData:row.before_data,afterData:row.after_data,metadata:row.metadata||{},actor:row.actor_id||'à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¸‡à¸²à¸™',createdAt:row.created_at}));
     if(remote.length){writeLocal(localAuditKey,remote);if(typeof window.renderAuditLog==='function')window.renderAuditLog()}
   }
   let hydratePromise=null;
@@ -111,9 +149,9 @@
       const results=await Promise.allSettled(tasks);
       const failed=results.find(result=>result.status==='rejected');
       if(failed){
-        const error=failed.reason||new Error('ไม่ทราบสาเหตุ');
+        const error=failed.reason||new Error('à¹„à¸¡à¹ˆà¸—à¸£à¸²à¸šà¸ªà¸²à¹€à¸«à¸•à¸¸');
         window.scenerySupabase.lastError=error;
-        notify(`ซิงก์ Supabase บางส่วนไม่สำเร็จ: ${error.message||error}`,'error');
+        notify(`à¸‹à¸´à¸‡à¸à¹Œ Supabase à¸šà¸²à¸‡à¸ªà¹ˆà¸§à¸™à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error');
       }else{
         window.scenerySupabase.lastError=null;
         window.scenerySupabase.lastSyncAt=new Date().toISOString();
@@ -130,27 +168,27 @@
     const saveCloseRoundDetailEdit=originals.saveCloseRoundDetailEdit||window.saveCloseRoundDetailEdit;
     if(saveInvoiceHistory&&!window.saveInvoiceHistory.__supabaseWrapped){
       const localSave=saveInvoiceHistory;
-      window.saveInvoiceHistory=function(records){localSave(records);if(client)upsertInvoices(records).catch(error=>notify(`บันทึก Invoice ขึ้น Supabase ไม่สำเร็จ: ${error.message||error}`,'error'))};
+      window.saveInvoiceHistory=function(records){localSave(records);if(client)upsertInvoices(records).catch(error=>notify(`à¸šà¸±à¸™à¸—à¸¶à¸ Invoice à¸‚à¸¶à¹‰à¸™ Supabase à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error'))};
       window.saveInvoiceHistory.__supabaseWrapped=true;
     }
     if(saveClosedBookings&&!window.saveClosedBookings.__supabaseWrapped){
       const localSave=saveClosedBookings;
-      window.saveClosedBookings=function(){localSave();if(client)upsertBookings(window.sceneryAppState?.closedBookings||[]).catch(error=>notify(`บันทึกหลักฐานการจองไม่สำเร็จ: ${error.message||error}`,'error'))};
+      window.saveClosedBookings=function(){localSave();if(client)upsertBookings(window.sceneryAppState?.closedBookings||[]).catch(error=>notify(`à¸šà¸±à¸™à¸—à¸¶à¸à¸«à¸¥à¸±à¸à¸à¸²à¸™à¸à¸²à¸£à¸ˆà¸­à¸‡à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error'))};
       window.saveClosedBookings.__supabaseWrapped=true;
     }
     if(deleteInvoiceHistory&&!window.deleteInvoiceHistory.__supabaseWrapped){
       const localDelete=deleteInvoiceHistory;
-      window.deleteInvoiceHistory=function(id){localDelete(id);if(client)deleteInvoiceRemote(id).catch(error=>notify(`ลบ Invoice จาก Supabase ไม่สำเร็จ: ${error.message||error}`,'error'))};
+      window.deleteInvoiceHistory=function(id){localDelete(id);if(client)deleteInvoiceRemote(id).catch(error=>notify(`à¸¥à¸š Invoice à¸ˆà¸²à¸ Supabase à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error'))};
       window.deleteInvoiceHistory.__supabaseWrapped=true;
     }
     if(submitCloseRound&&!window.submitCloseRound.__supabaseWrapped){
       const localSubmit=submitCloseRound;
-      window.submitCloseRound=function(){localSubmit();if(client)syncRounds().catch(error=>notify(`บันทึกปิดรอบขึ้น Supabase ไม่สำเร็จ: ${error.message||error}`,'error'))};
+      window.submitCloseRound=function(){localSubmit();if(client)syncRounds().catch(error=>notify(`à¸šà¸±à¸™à¸—à¸¶à¸à¸›à¸´à¸”à¸£à¸­à¸šà¸‚à¸¶à¹‰à¸™ Supabase à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error'))};
       window.submitCloseRound.__supabaseWrapped=true;
     }
     if(saveCloseRoundDetailEdit&&!window.saveCloseRoundDetailEdit.__supabaseWrapped){
       const localSave=saveCloseRoundDetailEdit;
-      window.saveCloseRoundDetailEdit=function(recordId,field,value){localSave(recordId,field,value);if(client){const payload=readLocal(localEditsKey,{});currentUser().then(user=>client.from('close_round_edits').upsert({record_id:String(recordId),payload:payload[String(recordId)]||{},updated_by:user?.id||null},{onConflict:'record_id'})).catch(error=>notify(`บันทึกหมายเหตุปิดรอบไม่สำเร็จ: ${error.message||error}`,'error'))}};
+      window.saveCloseRoundDetailEdit=function(recordId,field,value){localSave(recordId,field,value);if(client){const payload=readLocal(localEditsKey,{});currentUser().then(user=>client.from('close_round_edits').upsert({record_id:String(recordId),payload:payload[String(recordId)]||{},updated_by:user?.id||null},{onConflict:'record_id'})).catch(error=>notify(`à¸šà¸±à¸™à¸—à¸¶à¸à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸à¸›à¸´à¸”à¸£à¸­à¸šà¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${error.message||error}`,'error'))}};
       window.saveCloseRoundDetailEdit.__supabaseWrapped=true;
     }
   }
@@ -160,12 +198,12 @@
       event.preventDefault();event.stopImmediatePropagation();
       const username=String(document.querySelector('#username')?.value||'').trim(),password=String(document.querySelector('#password')?.value||'').trim();
       const email=username.includes('@')?username:(config.emailDomain?`${username}@${config.emailDomain}`:'');
-      if(!email){notify('กรุณาใส่ชื่อผู้ใช้เป็นอีเมล หรือกำหนด emailDomain ใน supabase-config.js','error');return}
+      if(!email){notify('à¸à¸£à¸¸à¸“à¸²à¹ƒà¸ªà¹ˆà¸Šà¸·à¹ˆà¸­à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¹€à¸›à¹‡à¸™à¸­à¸µà¹€à¸¡à¸¥ à¸«à¸£à¸·à¸­à¸à¸³à¸«à¸™à¸” emailDomain à¹ƒà¸™ supabase-config.js','error');return}
       try{localStorage.setItem(loginEmailKey,email)}catch{}
       const result=await client.auth.signInWithPassword({email,password});
-      if(result.error){notify(`เข้าสู่ระบบ Supabase ไม่สำเร็จ: ${result.error.message}`,'error');return}
+      if(result.error){notify(`à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸š Supabase à¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${result.error.message}`,'error');return}
       const passwordInput=document.querySelector('#password');if(passwordInput)passwordInput.value='';
-      document.querySelector('#login-screen')?.classList.add('is-hidden');document.querySelector('#app-screen')?.classList.remove('is-hidden');await hydrate();notify('เข้าสู่ระบบและเชื่อมฐานข้อมูล Supabase แล้ว');
+      document.querySelector('#login-screen')?.classList.add('is-hidden');document.querySelector('#app-screen')?.classList.remove('is-hidden');await hydrate();notify('à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸šà¹à¸¥à¸°à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸à¸²à¸™à¸‚à¹‰à¸­à¸¡à¸¹à¸¥ Supabase à¹à¸¥à¹‰à¸§');
     },true);
   }
   let syncTimer=null;
@@ -202,3 +240,4 @@
     installRealtime();
   });
 })();
+
