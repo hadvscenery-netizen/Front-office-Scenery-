@@ -6,7 +6,8 @@
   const config=window.SCENERY_SUPABASE_CONFIG||{};
   const hasConfig=Boolean(config.url&&config.anonKey);
   const apiRoot=String(config.url||'').replace(/\/$/,'');
-  const authToken=()=>window.scenerySupabase?.session?.access_token||'';
+  const persistedSession=(()=>{try{return JSON.parse(localStorage.getItem('scenery-supabase-session')||'null')}catch{return null}})();
+  const authToken=()=>window.scenerySupabase?.session?.access_token||persistedSession?.access_token||'';
   const restRequest=async(path,options={})=>{
     const headers={'apikey':config.anonKey,'Content-Type':'application/json',...(options.headers||{})};
     const token=authToken();if(token)headers.Authorization='Bearer '+token;
@@ -53,7 +54,7 @@
   const client=restClient;
   const localHistoryKey='scenery-invoice-history',localBookingsKey='scenery-closed-bookings',localRoundsKey='scenery-closed-rounds',localEditsKey='scenery-close-round-detail-edits',localAuditKey='scenery-audit-log',loginEmailKey='scenery-last-login-email';
   const originals={saveInvoiceHistory:window.saveInvoiceHistory,saveClosedBookings:window.saveClosedBookings,deleteInvoiceHistory:window.deleteInvoiceHistory,submitCloseRound:window.submitCloseRound,saveCloseRoundDetailEdit:window.saveCloseRoundDetailEdit};
-  window.scenerySupabase={enabled:hasConfig,client,mode:client?'supabase-rest':'local'};
+  window.scenerySupabase={enabled:hasConfig,client,mode:client?'supabase-rest':'local',session:persistedSession};
   const notify=(message,type='info')=>{if(typeof window.showToast==='function')window.showToast(message,type)};
   const readLocal=(key,fallback)=>{try{const value=JSON.parse(localStorage.getItem(key)||'null');return value??fallback}catch{return fallback}};
   const writeLocal=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
