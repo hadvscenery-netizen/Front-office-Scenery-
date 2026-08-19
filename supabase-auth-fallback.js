@@ -24,10 +24,10 @@
   };
   const messageFor = (body, status) => {
     const raw = String(body?.error_description || body?.msg || body?.message || body?.error || '').toLowerCase();
-    if (status === 400 && /invalid login credentials|invalid email or password/.test(raw)) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-    if (/email not confirmed|confirm/.test(raw)) return 'อีเมลนี้ยังไม่ได้ยืนยันใน Supabase';
-    if (/rate limit|too many/.test(raw)) return 'ลองเข้าสู่ระบบใหม่อีกครั้งภายหลัง';
-    return 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจอีเมลและรหัสผ่านใน Supabase';
+    if (status === 400 && /invalid login credentials|invalid email or password/.test(raw)) return 'à¸­à¸µà¹€à¸¡à¸¥à¸«à¸£à¸·à¸­à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡';
+    if (/email not confirmed|confirm/.test(raw)) return 'à¸­à¸µà¹€à¸¡à¸¥à¸™à¸µà¹‰à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¸¢à¸·à¸™à¸¢à¸±à¸™à¹ƒà¸™ Supabase';
+    if (/rate limit|too many/.test(raw)) return 'à¸¥à¸­à¸‡à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸šà¹ƒà¸«à¸¡à¹ˆà¸­à¸µà¸à¸„à¸£à¸±à¹‰à¸‡à¸ à¸²à¸¢à¸«à¸¥à¸±à¸‡';
+    return 'à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸šà¹„à¸¡à¹ˆà¸ªà¸³à¹€à¸£à¹‡à¸ˆ à¸à¸£à¸¸à¸“à¸²à¸•à¸£à¸§à¸ˆà¸­à¸µà¹€à¸¡à¸¥à¹à¸¥à¸°à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™à¹ƒà¸™ Supabase';
   };
 
   form.addEventListener('submit', async event => {
@@ -38,11 +38,11 @@
     const password = String(passwordInput?.value || '');
     const email = username.includes('@') ? username : (config.emailDomain ? `${username}@${config.emailDomain}` : '');
     if (!email) {
-      notify('กรุณาใส่ชื่อผู้ใช้งานเป็นอีเมล เช่น name@example.com', 'error');
+      notify('à¸à¸£à¸¸à¸“à¸²à¹ƒà¸ªà¹ˆà¸Šà¸·à¹ˆà¸­à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¸‡à¸²à¸™à¹€à¸›à¹‡à¸™à¸­à¸µà¹€à¸¡à¸¥ à¹€à¸Šà¹ˆà¸™ name@example.com', 'error');
       return;
     }
     const button = form.querySelector('button[type="submit"]');
-    if (button) { button.disabled = true; button.dataset.originalText = button.textContent; button.textContent = 'กำลังตรวจสอบ...'; }
+    if (button) { button.disabled = true; button.dataset.originalText = button.textContent; button.textContent = 'à¸à¸³à¸¥à¸±à¸‡à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸š...'; }
     try {
       const response = await fetch(`${String(config.url).replace(/\/$/, '')}/auth/v1/token?grant_type=password`, {
         method: 'POST',
@@ -55,6 +55,7 @@
         return;
       }
       try { localStorage.setItem('scenery-last-login-email', email); } catch {}
+      try { localStorage.setItem('scenery-supabase-session', JSON.stringify(body)); } catch {}
       window.scenerySupabase = window.scenerySupabase || {};
       window.scenerySupabase.enabled = true;
       window.scenerySupabase.mode = 'supabase-auth-rest';
@@ -63,11 +64,12 @@
       if (passwordInput) passwordInput.value = '';
       document.querySelector('#login-screen')?.classList.add('is-hidden');
       document.querySelector('#app-screen')?.classList.remove('is-hidden');
-      notify('เข้าสู่ระบบ Supabase สำเร็จ');
+      notify('à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸š Supabase à¸ªà¸³à¹€à¸£à¹‡à¸ˆ');
     } catch (error) {
-      notify('เชื่อมต่อ Supabase ไม่ได้ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่', 'error');
+      notify('à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸•à¹ˆà¸­ Supabase à¹„à¸¡à¹ˆà¹„à¸”à¹‰ à¸à¸£à¸¸à¸“à¸²à¸•à¸£à¸§à¸ˆà¸­à¸´à¸™à¹€à¸—à¸­à¸£à¹Œà¹€à¸™à¹‡à¸•à¹à¸¥à¹‰à¸§à¸¥à¸­à¸‡à¹ƒà¸«à¸¡à¹ˆ', 'error');
     } finally {
-      if (button) { button.disabled = false; button.textContent = button.dataset.originalText || 'เข้าสู่ระบบ'; }
+      if (button) { button.disabled = false; button.textContent = button.dataset.originalText || 'à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸£à¸°à¸šà¸š'; }
     }
   }, true);
 })();
+
