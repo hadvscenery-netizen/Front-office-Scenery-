@@ -41,12 +41,19 @@
         }
       };
       return builder;
+    },
+    channel(){
+      const channel={on(){return channel},subscribe(){return channel}};
+      return channel;
     }
   }:null;
-  const client=window.supabase?.createClient&&hasConfig?window.supabase.createClient(config.url,config.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}):restClient;
+  // The login form uses the REST fallback before the optional CDN finishes
+  // loading. Keep reads and writes on the same REST client so its access token
+  // is used consistently after login.
+  const client=restClient;
   const localHistoryKey='scenery-invoice-history',localBookingsKey='scenery-closed-bookings',localRoundsKey='scenery-closed-rounds',localEditsKey='scenery-close-round-detail-edits',localAuditKey='scenery-audit-log',loginEmailKey='scenery-last-login-email';
   const originals={saveInvoiceHistory:window.saveInvoiceHistory,saveClosedBookings:window.saveClosedBookings,deleteInvoiceHistory:window.deleteInvoiceHistory,submitCloseRound:window.submitCloseRound,saveCloseRoundDetailEdit:window.saveCloseRoundDetailEdit};
-  window.scenerySupabase={enabled:hasConfig,client,mode:client?(window.supabase?.createClient?'supabase':'supabase-rest'):'local'};
+  window.scenerySupabase={enabled:hasConfig,client,mode:client?'supabase-rest':'local'};
   const notify=(message,type='info')=>{if(typeof window.showToast==='function')window.showToast(message,type)};
   const readLocal=(key,fallback)=>{try{const value=JSON.parse(localStorage.getItem(key)||'null');return value??fallback}catch{return fallback}};
   const writeLocal=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
